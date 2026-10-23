@@ -121,3 +121,22 @@ def test_validate_probe_rejects_wrong_install_or_pinned_mode(
 
     with pytest.raises(preflight.PreflightError, match=message):
         preflight.validate_probe(probe, source_root)
+
+
+def test_main_points_to_start_script_instead_of_json_handoff_message(
+    preflight, monkeypatch, capsys, tmp_path
+):
+    report = {
+        "python": sys.executable,
+        "repository_root": str(tmp_path),
+        "source_dir": str(tmp_path / "src"),
+        "package_file": str(tmp_path / "src/projectmem/__init__.py"),
+        "mcp_server_file": str(tmp_path / "src/projectmem/mcp_server.py"),
+        "projects": [],
+    }
+    monkeypatch.setattr(preflight, "run_preflight", lambda _root: report)
+
+    assert preflight.main([]) == 0
+    output = capsys.readouterr().out
+    assert "start_tunnel_client.ps1" in output
+    assert "Apply the JSON environment values" not in output

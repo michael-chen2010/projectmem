@@ -221,8 +221,8 @@ def main(argv: list[str] | None = None) -> int:
     for project in report["projects"]:
         print(f"  - {project['id']}: {project['path']}")
     print()
-    print("Apply the JSON environment values in PowerShell before tunnel-client.")
-    print("PROJECTMEM_ROOT must be unset; do not pass --root.")
+    print("启动方式：在 PowerShell 中运行 .\\start_tunnel_client.ps1。")
+    print("启动脚本会应用已验证的环境变量，并执行 tunnel-client init 和 run。")
     return 0
 
 
