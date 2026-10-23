@@ -255,6 +255,8 @@ def _git_last_message(root: Path) -> str | None:
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=5,
         )
         return result.stdout.strip() or None

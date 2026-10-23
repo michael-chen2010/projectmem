@@ -476,7 +476,9 @@ def test_package_version_matches_pyproject():
     import projectmem
 
     pyproject = _Path(__file__).resolve().parents[1] / "pyproject.toml"
-    declared = re.search(r'^version = "([^"]+)"', pyproject.read_text(), re.M).group(1)
+    declared = re.search(
+        r'^version = "([^"]+)"', pyproject.read_text(encoding="utf-8"), re.M
+    ).group(1)
     assert projectmem.__version__ == declared
 
 

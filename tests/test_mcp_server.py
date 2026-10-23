@@ -57,6 +57,8 @@ def test_git_helpers_detach_stdin_and_keep_timeouts(
     assert calls
     assert all(call.get("stdin") is subprocess.DEVNULL for call in calls)
     assert all(call.get("timeout") == 5 for call in calls)
+    assert all(call.get("encoding") == "utf-8" for call in calls)
+    assert all(call.get("errors") == "replace" for call in calls)
 
 
 def _git(repo: Path, *args: str) -> None:
@@ -66,6 +68,8 @@ def _git(repo: Path, *args: str) -> None:
         check=True,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         stdin=subprocess.DEVNULL,
     )
 
@@ -300,3 +304,87 @@ def test_server_builds_when_fastmcp_is_gone(monkeypatch, tmp_path):
     # 15 memory tools + list_projects / current_project for global routing
     assert len(module.mcp.tools) == 17
     assert "list_projects" in module.mcp.tools
+
+
+def test_multiple_registered_projects_override_cwd_auto_pin(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """No explicit root means global routing when the registry has 2+ projects.
+
+    MCP clients commonly launch the server with a repository as CWD. That must
+    not silently pin a multi-project server to whichever repo happens to be
+    current; explicit --root / PROJECTMEM_ROOT still opts into single-project
+    mode.
+    """
+    from projectmem import mcp_server, project_registry
+    from projectmem.project_registry import ProjectRecord, Registry
+
+    first = (tmp_path / "webgameserver").resolve()
+    second = (tmp_path / "tabletennisgo").resolve()
+    monkeypatch.setattr(sys, "argv", ["pjm-mcp"])
+    monkeypatch.delenv("PROJECTMEM_ROOT", raising=False)
+    monkeypatch.setattr(mcp_server, "discover_mem_dir", lambda: first / ".projectmem")
+    monkeypatch.setattr(
+        project_registry,
+        "load_registry",
+        lambda: Registry(
+            projects=(
+                ProjectRecord(id="webgameserver", path=first),
+                ProjectRecord(id="tabletennisgo", path=second),
+            )
+        ),
+    )
+
+    assert mcp_server._resolve_project_root() is None
+
+
+def test_git_commit_message_is_decoded_as_utf8_not_windows_ansi(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from projectmem.commands import auto_capture
+
+    repo = _make_git_project(tmp_path, monkeypatch)
+    _git(repo, "config", "i18n.logOutputEncoding", "UTF-8")
+    (repo / "README.md").write_text("# unicode\n", encoding="utf-8")
+    _git(repo, "add", "README.md")
+    _git(repo, "commit", "-m", "提交说明 — 中文")
+
+    original_run = subprocess.run
+
+    def gbk_default_run(args, **kwargs):
+        if kwargs.get("text") and not kwargs.get("encoding"):
+            kwargs["encoding"] = "gbk"
+        return original_run(args, **kwargs)
+
+    monkeypatch.setattr(auto_capture.subprocess, "run", gbk_default_run)
+
+    assert auto_capture._git_last_message(repo) == "提交说明 — 中文"
+
+
+@pytest.mark.parametrize("pin_source", ["argv", "env"])
+def test_explicit_root_configuration_still_pins_multi_project_server(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, pin_source: str
+) -> None:
+    from projectmem import mcp_server, project_registry
+    from projectmem.project_registry import ProjectRecord, Registry
+
+    first = (tmp_path / "webgameserver").resolve()
+    second = (tmp_path / "tabletennisgo").resolve()
+    if pin_source == "argv":
+        monkeypatch.setattr(sys, "argv", ["pjm-mcp", "--root", str(first)])
+        monkeypatch.delenv("PROJECTMEM_ROOT", raising=False)
+    else:
+        monkeypatch.setattr(sys, "argv", ["pjm-mcp"])
+        monkeypatch.setenv("PROJECTMEM_ROOT", str(first))
+    monkeypatch.setattr(
+        project_registry,
+        "load_registry",
+        lambda: Registry(
+            projects=(
+                ProjectRecord(id="webgameserver", path=first),
+                ProjectRecord(id="tabletennisgo", path=second),
+            )
+        ),
+    )
+
+    assert mcp_server._resolve_project_root() == first

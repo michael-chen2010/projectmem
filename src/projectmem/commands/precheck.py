@@ -537,6 +537,8 @@ def _get_staged_files(root: Path) -> list[str]:
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=5,
             stdin=subprocess.DEVNULL,
         )
@@ -558,6 +560,8 @@ def _git_recent_changes(file_path: str, days: int, root: Path | None = None) -> 
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=5,
             stdin=subprocess.DEVNULL,
         )
@@ -575,6 +579,8 @@ def _get_working_tree_files(root: Path) -> list[str]:
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=5,
             stdin=subprocess.DEVNULL,
         )

@@ -21,6 +21,8 @@ def run(limit: int = 20, root: Path | None = None) -> None:
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
     except (OSError, subprocess.CalledProcessError):
         typer.echo("Error: Could not read git log. Are you in a git repository?", err=True)
@@ -101,6 +103,8 @@ def get_commit_files(commit_hash: str, root: Path) -> list[str]:
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         return [f.strip() for f in result.stdout.splitlines() if f.strip()]
     except (OSError, subprocess.CalledProcessError):

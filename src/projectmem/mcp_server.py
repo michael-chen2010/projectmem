@@ -65,8 +65,9 @@ def _resolve_project_root() -> Path | None:
     Priority order:
       1. --root <path> CLI argument (highest — explicit beats inferred)
       2. $PROJECTMEM_ROOT environment variable
-      3. Parent-walk from CWD looking for `.projectmem/` (like git)
-      4. None — tools will surface the helpful error from require_mem_dir.
+      3. Multiple registered projects select global mode, regardless of CWD
+      4. Parent-walk from CWD looking for `.projectmem/` (legacy convenience)
+      5. None — tools will surface the helpful error from require_mem_dir.
     """
     if "--root" in sys.argv:
         idx = sys.argv.index("--root")
@@ -75,6 +76,10 @@ def _resolve_project_root() -> Path | None:
     env_root = os.environ.get("PROJECTMEM_ROOT")
     if env_root:
         return Path(env_root).expanduser().resolve()
+    from projectmem.project_registry import load_registry
+
+    if len(load_registry().projects) > 1:
+        return None
     found = discover_mem_dir()
     if found is not None:
         return found.parent
@@ -90,9 +95,9 @@ if _PROJECT_ROOT is not None:
     except OSError:
         pass
 
-# Global mode: no --root, no $PROJECTMEM_ROOT, and no .projectmem/ above the
-# cwd. One server then serves every registered project and each call decides
-# which one it means. Legacy mode keeps working untouched.
+# Global mode: no explicit root and either multiple projects are registered or
+# no .projectmem/ is discoverable from CWD. A multi-project registry must not be
+# silently pinned to whichever repository an MCP client happens to launch from.
 GLOBAL_MODE = _PROJECT_ROOT is None
 
 ProjectArg = Annotated[Optional[str], Field(

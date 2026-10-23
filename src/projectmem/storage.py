@@ -798,6 +798,8 @@ def get_git_commit(root: Path | None = None) -> str | None:
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=5,
             stdin=subprocess.DEVNULL,
         )

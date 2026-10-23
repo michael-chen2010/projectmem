@@ -91,11 +91,12 @@
 > }
 > ```
 >
-> No `--root`, no `cwd` — that's what makes it serve everything. Per-client
-> instructions (Claude Desktop, Claude Code, Cursor, Antigravity, Codex) are in
-> [MCP Integration](#mcp-integration-recommended); `pjm init` prints this block
-> with your own Python path filled in. **Then fully restart the client** — MCP
-> servers only load on a cold start.
+> Do not set `--root` or `PROJECTMEM_ROOT` for the shared server. With more
+> than one project registered, it uses global routing even when the process CWD is
+> inside one repo. Per-client instructions (Claude Desktop, Claude Code, Cursor,
+> Antigravity, Codex) are in [MCP Integration](#mcp-integration-recommended);
+> `pjm init` prints this block with your Python path. **Then fully restart the
+> client** — MCP servers only load on a cold start.
 >
 > **5. Check your work**
 >
@@ -635,9 +636,9 @@ Two ways to register the MCP server — pick whichever fits your workflow:
 - **Use the absolute path to `python`** (run `which python` to find yours). Cursor subprocesses don't reliably inherit your shell `PATH`.
 - **Don't bother with the `cwd` field.** Cursor — like Claude Desktop — silently ignores it: the server ends up running with `cwd=~`. Since 0.3.0 that no longer matters, because projects are found by name in the registry rather than by where the server runs.
 
-Registered globally, one entry covers every project. Per-project `.cursor/mcp.json` still works if you prefer the server to exist only when that repo is open — add `"--root", "/absolute/path/to/your/project"` to `args` there to pin it.
+Registered globally, one entry covers every registered project. Per-project `.cursor/mcp.json` still works if you prefer the server to exist only when that repo is open — add `"--root", "/absolute/path/to/your/project"` to `args` there to pin it.
 
-Then **fully quit Cursor (Cmd+Q on Mac)** and reopen. projectmem also auto-discovers `.projectmem/` by walking up from CWD (like git does for `.git/`), and honors `PROJECTMEM_ROOT` and a `--root <path>` CLI argument.
+Then **fully quit Cursor (Cmd+Q on Mac)** and reopen. Without an explicit `--root` or `PROJECTMEM_ROOT`, a registry containing multiple projects selects global mode before CWD discovery. CWD discovery remains a fallback for single-project/legacy setups; `--root` and `PROJECTMEM_ROOT` explicitly pin one project.
 
 ### Antigravity
 
@@ -664,7 +665,7 @@ Paste this block:
 }
 ```
 
-Antigravity does honor the `cwd` field, so adding `"cwd": "/absolute/path/to/your/project"` works — but it ties the server to that one repo. Leave it out and the same entry serves every registered project.
+Antigravity honors the `cwd` field, but CWD discovery is only a fallback: with multiple registered projects and no explicit `--root` or `PROJECTMEM_ROOT`, the server uses global routing. Use `--root` or `PROJECTMEM_ROOT` only when you intentionally want to pin a server to one repository.
 
 Then **fully quit Antigravity (Cmd+Q on Mac)** and reopen — MCP servers only initialize on cold start. All 17 projectmem tools register identically to Claude Desktop / Cursor.
 
@@ -685,7 +686,7 @@ args = ["-m", "projectmem.mcp_server"]
 Three things to know about this block:
 
 - **Use the absolute path to `python`** (run `which python` to find yours). Codex subprocesses don't reliably inherit your shell `PATH`.
-- **You no longer need `--root` or `cwd`.** Earlier releases passed `--root` as defense in depth (the `cwd` field does appear to work in Codex, unlike Claude Desktop and Cursor). Since 0.3.0 the registry makes both unnecessary — add `"--root", "/absolute/path/to/your/project"` to `args` only if you want this server locked to a single repo.
+- **You no longer need `--root` or `cwd` for a shared server.** With two or more registered projects and no explicit `--root` / `PROJECTMEM_ROOT`, registry-based global mode takes precedence over CWD discovery. CWD can still be a per-call fallback when no explicit or active project resolves. Add `"--root", "/absolute/path/to/your/project"` only if you intentionally want this server locked to one repo.
 - **Set your reasoning effort to `medium` or higher.** On low-reasoning Codex skips `get_instructions` from the session-start trio, which can cause the AI to miss the Setup Mode workflow rules. Medium+ honors the full trio automatically.
 
 **Validate the TOML:**

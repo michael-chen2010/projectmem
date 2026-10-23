@@ -146,6 +146,8 @@ def test_hook_runs_under_stripped_path(tmp_path: Path, fake_pjm: Path) -> None:
         env=minimal_env,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=10,
         stdin=subprocess.DEVNULL,
     )
