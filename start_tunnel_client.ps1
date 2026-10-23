@@ -108,7 +108,9 @@ if ([string]::IsNullOrWhiteSpace($TunnelId)) {
     throw 'Tunnel ID 不能为空；为避免初始化错误的隧道，已停止。'
 }
 
-$McpCommand = "$Python -m projectmem.mcp_server"
+# tunnel-client parses backslashes as escapes in --mcp-command; normalize the executable path.
+$McpPython = [System.IO.Path]::GetFullPath($Python).Replace('\', '/')
+$McpCommand = '"' + $McpPython + '" -m projectmem.mcp_server'
 Write-Host '[3/4] 初始化 tunnel-client profile（保留原来的 --force 行为）...'
 $InitArgs = @(
     'init',
